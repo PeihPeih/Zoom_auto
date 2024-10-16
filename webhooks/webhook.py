@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Request, HTTPException, Header
 import json
+import secrets
 import hmac
 import hashlib
 import os
@@ -9,38 +10,33 @@ load_dotenv()
 
 webhook_router = APIRouter()
 
-ZOOM_WEBHOOK_SECRET_TOKEN = os.environ.get("ZOOM_WEBHOOK_SECRET_TOKEN='qESnq1vHTQalC7o65xjV2A")
 
-def verify_zoom_signature(request_timestamp: str, request_body: dict, zoom_signature: str):
-    # Construct the message
-    message = f"v0:{request_timestamp}:{json.dumps(request_body)}"
-    
-    # Hash the message using HMAC SHA-256 and the secret token
-    hash_for_verify = hmac.new(
-        ZOOM_WEBHOOK_SECRET_TOKEN.encode(),
-        message.encode(),
-        hashlib.sha256
-    ).hexdigest()
+SIGNATURE_HEADER = "Signature-Header"
+SIGNATURE_ALGORITHM = "sha256"
+ENCODE_FORMAT = "hex"
+HMAC_SECRET = os.environ.get("ZOOM_WEBHOOK_SECRET_TOKEN")
 
-    # Create the signature
-    generated_signature = f"v0={hash_for_verify}"
-
-    # Compare with the signature in the header
-    return hmac.compare_digest(generated_signature, zoom_signature)
 
 @webhook_router.post("/webhook")
-async def zoom_webhook(request: Request, 
-                       x_zm_request_timestamp: str = Header(...), 
-                       x_zm_signature: str = Header(...)):
+async def webhook(req: Request, signature_header: str = Header(None)):
     try:
-        # Parse the request body
-        request_body = await request.json()
+        # Read the raw body (assuming the body is read as bytes)
+        raw_body = await req.body()
 
-        # Validate the Zoom signature
-        if verify_zoom_signature(x_zm_request_timestamp, request_body, x_zm_signature):
-            return {"message": "Webhook verified", "data": request_body}
-        else:
-            raise HTTPException(status_code=400, detail="Invalid signature")
-    
+        # Create HMAC digest with the payload and secret
+        hmac_digest = hmac.new(
+            HMAC_SECRET.encode(), raw_body, hashlib.sha256
+        ).hexdigest()
+
+        # Construct the digest with the algorithm and hex encoded format
+        digest = f"{SIGNATURE_ALGORITHM}={hmac_digest}"
+
+        # Compare the provider's signature with the computed digest
+        if not signature_header or not secrets.compare_digest(digest, signature_header):
+            raise HTTPException(status_code=401, detail="Unauthorized")
+
+        # Webhook Authenticated, process the request
+        return {"message": "Success"}
+
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
