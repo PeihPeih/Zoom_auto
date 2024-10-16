@@ -10,33 +10,31 @@ load_dotenv()
 
 webhook_router = APIRouter()
 
-
-SIGNATURE_HEADER = "Signature-Header"
-SIGNATURE_ALGORITHM = "sha256"
-ENCODE_FORMAT = "hex"
-HMAC_SECRET = os.environ.get("ZOOM_WEBHOOK_SECRET_TOKEN")
+ZOOM_SECRET_TOKEN = os.environ.get("ZOOM_WEBHOOK_SECRET_TOKEN")
 
 
 @webhook_router.post("/webhook")
-async def webhook(req: Request, signature_header: str = Header(None)):
-    try:
-        # Read the raw body (assuming the body is read as bytes)
-        raw_body = await req.body()
+async def webhook(request: Request):
+    print(ZOOM_SECRET_TOKEN)
+    headers = dict(request.headers)
+    body = await request.json()
+    print(headers)
+    print(body)
 
-        # Create HMAC digest with the payload and secret
-        hmac_digest = hmac.new(
-            HMAC_SECRET.encode(), raw_body, hashlib.sha256
-        ).hexdigest()
+    if 'payload' in body and 'plainToken' in body['payload']:
+        secret_token = ZOOM_SECRET_TOKEN.encode("utf-8")
+        plaintoken = body['payload']['plainToken']
+        mess = plaintoken.encode("utf-8")
+        has = hmac.new(secret_token, mess, hashlib.sha256).digest()
+        hexmessage = has.hex()
 
-        # Construct the digest with the algorithm and hex encoded format
-        digest = f"{SIGNATURE_ALGORITHM}={hmac_digest}"
-
-        # Compare the provider's signature with the computed digest
-        if not signature_header or not secrets.compare_digest(digest, signature_header):
-            raise HTTPException(status_code=401, detail="Unauthorized")
-
-        # Webhook Authenticated, process the request
-        return {"message": "Success"}
-
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        response = {
+            'message': {
+                'plainToken': plaintoken,
+                'encryptedToken': hexmessage
+            }
+        }
+        print(response['message'])
+        return response['message']
+    else:
+        return {'error': 'Invalid payload'}
