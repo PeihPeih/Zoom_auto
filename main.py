@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 # import url
 from api.url import router as api_url
-from webhooks.webhook import webhook_router, sio, sio_app
+from webhooks.webhook import webhook_router
 import socketio
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -16,7 +16,10 @@ app.add_middleware(
 )
 
 
-app.mount("/ws", app=sio_app)
+sio = socketio.AsyncServer(cors_allowed_origins="*", async_mode='asgi')
+sio_app = socketio.ASGIApp(sio, app)
+
+app.mount("/", app=sio_app)
 app.add_route("/socket.io", sio_app, methods=["GET", "POST"])
 app.add_api_websocket_route("/socket.io", sio_app)
 

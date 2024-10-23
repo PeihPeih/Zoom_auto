@@ -5,16 +5,13 @@ import hmac
 import hashlib
 import os
 from dotenv import load_dotenv
-import socketio
+from main import sio
 
 load_dotenv()
 
 webhook_router = APIRouter()
 
 ZOOM_SECRET_TOKEN = os.environ.get("f")
-
-sio = socketio.AsyncServer(cors_allowed_origins="*", async_mode='asgi')
-sio_app = socketio.ASGIApp(sio)
 
 @webhook_router.post("/webhook")
 async def webhook(request: Request):
