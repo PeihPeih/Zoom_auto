@@ -5,6 +5,7 @@ import hmac
 import hashlib
 import os
 from dotenv import load_dotenv
+import socketio
 
 load_dotenv()
 
@@ -12,6 +13,8 @@ webhook_router = APIRouter()
 
 ZOOM_SECRET_TOKEN = os.environ.get("f")
 
+sio = socketio.AsyncServer(async_mode='asgi')
+app = socketio.ASGIApp(sio)
 
 @webhook_router.post("/webhook")
 async def webhook(request: Request):
@@ -34,7 +37,17 @@ async def webhook(request: Request):
                 'encryptedToken': hexmessage
             }
         }
-        print(response['message'])
         return response['message']
-    else:
-        return {'error': 'Invalid payload'}
+    
+    event = body['event']
+    payload = body['payload']
+
+    # Event started meeting        
+    if event == 'meeting.participant_joined':
+        data = {}
+        object = payload['object']
+        participant = object['participant']
+        data['name']=participant['user_name']
+        data['join_time']=participant['join_time']
+        await sio.emit("participant_joined", data)
+        return "Đã gửi data qua socket"
