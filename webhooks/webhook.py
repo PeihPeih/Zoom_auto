@@ -14,7 +14,7 @@ webhook_router = APIRouter()
 ZOOM_SECRET_TOKEN = os.environ.get("f")
 
 sio = socketio.AsyncServer(async_mode='asgi')
-app = socketio.ASGIApp(sio)
+sio_app = socketio.ASGIApp(sio)
 
 @webhook_router.post("/webhook")
 async def webhook(request: Request):
