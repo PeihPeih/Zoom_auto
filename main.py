@@ -13,13 +13,17 @@ app = FastAPI()
 sio = socketio.AsyncServer(cors_allowed_origins="*", async_mode='asgi')
 sio_app = socketio.ASGIApp(sio, app)
 
-app.mount("/ws", app=sio_app)
+app.mount("/", app=sio_app)
 app.add_route("/socket.io", sio_app, methods=["GET", "POST"])
 app.add_api_websocket_route("/socket.io", sio_app)
 
 app.include_router(api_url)
 
 ZOOM_SECRET_TOKEN = os.environ.get("f")
+
+@app.get("/")
+async def root():
+    return "Hello BE"
 
 @app.post("/webhook")
 async def webhook(request: Request):
