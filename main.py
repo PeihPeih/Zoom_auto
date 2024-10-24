@@ -11,20 +11,16 @@ import hashlib
 app = FastAPI()
 
 # CORS Middleware setup
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Adjust this for specific domains in production
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+app = FastAPI()
 
-# Socket.IO setup
+# Tạo socketio server và kết nối với FastAPI
 sio = socketio.AsyncServer(cors_allowed_origins="*", async_mode='asgi')
-sio_app = socketio.ASGIApp(sio)
+sio_app = socketio.ASGIApp(sio, app)
 
-# Mounting Socket.IO at specific route
-app.mount("/socket.io", sio_app)
+app.mount("/ws", sio_app)
+app.add_route("/socket.io", sio_app, methods=["GET", "POST"])
+app.add_api_websocket_route("/socket.io", sio_app)
+
 
 # API routes setup
 app.include_router(api_url)
