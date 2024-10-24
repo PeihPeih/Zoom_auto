@@ -4,6 +4,6 @@ socket.on('connect', ()=>{
     console.log('Connected to server');
 })
 
-socket.on('meeting_participant', (data)=>{
+socket.on('participant_joined', (data)=>{
     console.log('Participant info:', data)
 })
