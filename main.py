@@ -10,20 +10,30 @@ import hashlib
 
 app = FastAPI()
 
+# CORS Middleware setup
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Adjust this for specific domains in production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Socket.IO setup
 sio = socketio.AsyncServer(cors_allowed_origins="*", async_mode='asgi')
-sio_app = socketio.ASGIApp(sio, app)
+sio_app = socketio.ASGIApp(sio)
 
-app.mount("/", app=sio_app)
-app.add_route("/socket.io", sio_app, methods=["GET", "POST"])
-app.add_api_websocket_route("/socket.io", sio_app)
+# Mounting Socket.IO at specific route
+app.mount("/socket.io", sio_app)
 
+# API routes setup
 app.include_router(api_url)
 
 ZOOM_SECRET_TOKEN = os.environ.get("f")
 
 @app.get("/")
 async def root():
-    return "Hello BE"
+    return "Hello"
 
 @app.post("/webhook")
 async def webhook(request: Request):
@@ -33,7 +43,7 @@ async def webhook(request: Request):
     print(headers)
     print(body)
 
-    if 'payload' in body and 'plainToken' in body['payload']: # Dùng để validated url trên link zoom webhook
+    if 'payload' in body and 'plainToken' in body['payload']:  # Zoom URL validation
         secret_token = ZOOM_SECRET_TOKEN.encode("utf-8")
         plaintoken = body['payload']['plainToken']
         mess = plaintoken.encode("utf-8")
@@ -41,22 +51,21 @@ async def webhook(request: Request):
         hexmessage = has.hex()
 
         response = {
-            'message': {
-                'plainToken': plaintoken,
-                'encryptedToken': hexmessage
-            }
+            'plainToken': plaintoken,
+            'encryptedToken': hexmessage
         }
-        return response['message']
-    
-    event = body['event']
-    payload = body['payload']
+        return response
 
-    # Event started meeting        
+    event = body.get('event')
+    payload = body.get('payload')
+
+    # Event for participant joined meeting
     if event == 'meeting.participant_joined':
         data = {}
-        object = payload['object']
-        participant = object['participant']
-        data['name']=participant['user_name']
-        data['join_time']=participant['join_time']
+        object = payload.get('object', {})
+        participant = object.get('participant', {})
+        data['name'] = participant.get('user_name')
+        data['join_time'] = participant.get('join_time')
+
         await sio.emit("participant_joined", data)
-        return "Đã gửi data qua socket"
+        return {"message": "Data sent via socket"}

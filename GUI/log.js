@@ -1,4 +1,4 @@
-const socket = io('https://zoom-auto.onrender.com/ws');
+const socket = io('https://zoom-auto.onrender.com');
 
 socket.on('connect', ()=>{
     console.log('Connected to server');
