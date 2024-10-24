@@ -14,7 +14,7 @@ app = FastAPI()
 
 # Tạo socketio server và kết nối với FastAPI
 sio = socketio.AsyncServer(cors_allowed_origins="*", async_mode='asgi')
-sio_app = socketio.ASGIApp(sio)
+sio_app = socketio.ASGIApp(sio, app)
 
 app.mount("/ws", sio_app)
 app.add_route("/socket.io", sio_app, methods=["GET", "POST"])
