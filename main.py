@@ -56,6 +56,7 @@ async def webhook(request: Request):
 
     # Event for participant joined meeting
     if event == 'meeting.participant_joined':
+        print(1)
         data = {}
         object = payload.get('object', {})
         participant = object.get('participant', {})
@@ -63,4 +64,5 @@ async def webhook(request: Request):
         data['join_time'] = participant.get('join_time')
 
         await sio.emit("participant_joined", data)
+        print("Send data via socket")
         return {"message": "Data sent via socket"}
